@@ -495,9 +495,8 @@ function render(){
 
 function switchTab(k){activeTab=k;render();}
 
-// ── MLB Stats API sync via CORS proxy ──────────────────────────────
+// ── MLB Stats API sync (direct — API supports CORS) ───────────────
 const SEASON = 2026;
-const PROXY = 'https://corsproxy.io/?';
 
 async function syncAllHRs(isAutoLoad=false){
   const btn = document.getElementById('syncBtn');
@@ -514,7 +513,7 @@ async function syncAllHRs(isAutoLoad=false){
   await Promise.all(allPlayers.map(async ({player}) => {
     try {
       const url = `https://statsapi.mlb.com/api/v1/people/${player.mlbId}/stats?stats=season&season=${SEASON}&group=hitting`;
-      const res = await fetch(PROXY + encodeURIComponent(url));
+      const res = await fetch(url);
       const data = await res.json();
       const stats = data?.stats?.[0]?.splits?.[0]?.stat;
       if(stats){ player.hr = stats.homeRuns || 0; updated++; }
