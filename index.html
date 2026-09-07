@@ -540,6 +540,24 @@ async function syncAllHRs(isAutoLoad=false){
   render();
 }
 
+// Inject double-points banner into header when the final month is active
+function injectDoubleBanner(){
+  if(document.getElementById('doubleBanner')) return;
+  const today = new Date().toISOString().slice(0,10);
+  if(today < DOUBLE_POINTS_START) return;
+  const banner = document.createElement('div');
+  banner.id = 'doubleBanner';
+  banner.textContent = '🔥 DOUBLE POINTS ACTIVE — final month of the season, every home run counts 2x';
+  Object.assign(banner.style, {
+    fontFamily:"'Bebas Neue',sans-serif", fontSize:'0.85rem', letterSpacing:'1.5px',
+    textAlign:'center', padding:'9px 12px', marginTop:'12px',
+    background:'linear-gradient(90deg,#ff444425,#ffaa0025)', border:'1px solid #ffaa0040',
+    borderRadius:'8px', color:'#ffaa00'
+  });
+  const headerInner = document.querySelector('header > div');
+  if(headerInner) headerInner.insertBefore(banner, headerInner.querySelector('.tabs'));
+}
+
 // Inject sync button into header after render
 function injectSyncBtn(){
   if(document.getElementById('syncBtn')) return;
@@ -563,6 +581,7 @@ function injectSyncBtn(){
 }
 
 render();
+injectDoubleBanner();
 injectSyncBtn();
 // Auto-load on page open
 syncAllHRs(true);
