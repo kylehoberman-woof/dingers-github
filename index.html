@@ -136,7 +136,7 @@ const TEAMS = {
     { pos:'OF', name:'Teoscar Hernandez',   mlbId:606192, hr:0 },
     { pos:'OF', name:'Brent Rooker',        mlbId:667670, hr:0 },
     { pos:'OF', name:'James Wood',          mlbId:695578, hr:0 },
-    { pos:'OF', name:'George Springer',     mlbId:543641, hr:0 },
+    { pos:'OF', name:'George Springer',     mlbId:543807, hr:0 },
     { pos:'OF', name:'Cody Bellinger',      mlbId:641355, hr:0 },
     { pos:'DH', name:'Ben Rice',            mlbId:700250, hr:0 },
   ]},
@@ -185,7 +185,7 @@ const PROJ = {
 let activeTab = 'TODAY';
 
 const lbl = k => k==='KYLE' ? 'KYLE ★' : k;
-const getTotal = k => TEAMS[k].players.reduce((s,p)=>s+(p.hr||0),0);
+const getTotal = k => TEAMS[k].players.reduce((s,p)=>s+(p.pts||p.hr||0),0);
 const getProjTotal = k => TEAMS[k].players.reduce((s,p)=>s+(p.name?(PROJ[p.name]||0):0),0);
 const getOpen = k => TEAMS[k].players.filter(p=>!p.name);
 
@@ -208,7 +208,7 @@ function renderTabs(){
 function renderLeaderboard(){
   const sorted=Object.keys(TEAMS).sort((a,b)=>getTotal(b)-getTotal(a));
   const max=Math.max(...sorted.map(getTotal),1);
-  const medals=['🥇','🥈','🥉','💀'];
+  const medals=['🥇','🥈','🥉','LEN'];
   const rows=sorted.map((k,i)=>{
     const t=TEAMS[k];const tot=getTotal(k);
     const top=t.players.filter(p=>p.name&&p.hr>0).sort((a,b)=>b.hr-a.hr);
@@ -238,7 +238,7 @@ function renderLeaderboard(){
 
 function renderProjections(){
   const sorted=Object.keys(TEAMS).sort((a,b)=>getProjTotal(b)-getProjTotal(a));
-  const emoji=['🥇','🥈','🥉','💀'];
+  const emoji=['🥇','🥈','🥉','LEN'];
   const cards=sorted.map((k,i)=>{
     const t=TEAMS[k];
     return `<div class="proj-card" style="border-color:${t.color}40;background:${t.color}10">
@@ -337,7 +337,7 @@ function renderTeam(k){
       <div class="team-name" style="color:${t.color}">${lbl(k)}'S SQUAD</div>
       <div class="team-sub">${t.players.filter(p=>p.name).length} DRAFTED · PROJ ${getProjTotal(k)} HRs</div>
     </div>
-    <div><div class="team-total-label">TOTAL HRs</div><div class="team-total-num" style="color:${t.color}">${tot}</div></div>
+    <div><div class="team-total-label">TOTAL PTS</div><div class="team-total-num" style="color:${t.color}">${tot}</div></div>
   </div>
   <div class="players-list">${rows}</div>`;
 }
@@ -404,7 +404,7 @@ function renderToday(){
     return prevB - prevA;
   });
 
-  const medals = ['🥇','🥈','🥉','💀'];
+  const medals = ['🥇','🥈','🥉','LEN'];
   const hotTeam = Object.entries(teamTotals).sort((a,b)=>b[1]-a[1])[0];
 
   // Today's HRs feed
@@ -497,6 +497,7 @@ function switchTab(k){activeTab=k;render();}
 
 // ── MLB Stats API sync (direct — API supports CORS) ───────────────
 const SEASON = 2026;
+const DOUBLE_POINTS_START = '2026-09-01'; // final month of the regular season
 
 async function syncAllHRs(isAutoLoad=false){
   const btn = document.getElementById('syncBtn');
@@ -512,11 +513,19 @@ async function syncAllHRs(isAutoLoad=false){
   let updated = 0;
   await Promise.all(allPlayers.map(async ({player}) => {
     try {
-      const url = `https://statsapi.mlb.com/api/v1/people/${player.mlbId}/stats?stats=season&season=${SEASON}&group=hitting`;
+      const url = `https://statsapi.mlb.com/api/v1/people/${player.mlbId}/stats?stats=gameLog&season=${SEASON}&group=hitting`;
       const res = await fetch(url);
       const data = await res.json();
-      const stats = data?.stats?.[0]?.splits?.[0]?.stat;
-      if(stats){ player.hr = stats.homeRuns || 0; updated++; }
+      const splits = data?.stats?.[0]?.splits || [];
+      let hr = 0, pts = 0;
+      splits.forEach(g => {
+        const gameHR = g.stat?.homeRuns || 0;
+        hr += gameHR;
+        pts += gameHR * (g.date >= DOUBLE_POINTS_START ? 2 : 1);
+      });
+      player.hr = hr;
+      player.pts = pts;
+      updated++;
     } catch(e){ /* silently skip */ }
   }));
 
