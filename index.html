@@ -317,18 +317,22 @@ function renderRules(){
 
 function renderTeam(k){
   const t=TEAMS[k];const tot=getTotal(k);
+  const teamHr1=t.players.reduce((s,p)=>s+(p.hr1||0),0);
+  const teamHr2=t.players.reduce((s,p)=>s+(p.hr2||0),0);
   const rows=t.players.map((p)=>{
     if(!p.name)return `<div class="player-row empty">
       <span class="pos-tag" style="background:${t.color}18;color:${t.color}">${p.pos}</span>
       <span class="player-name empty-name">— empty —</span>
     </div>`;
     const proj=PROJ[p.name];
+    const hr1=p.hr1||0, hr2=p.hr2||0;
     return `<div class="player-row">
       <span class="pos-tag" style="background:${t.color}20;color:${t.color}">${p.pos}</span>
       <span class="player-name">${p.name}</span>
       ${proj?`<span class="proj-badge">proj ${proj}</span>`:''}
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;min-width:34px;text-align:center;color:${p.hr>0?t.color:'rgba(255,255,255,0.25)'}">
-        ${p.hr}
+      <div style="text-align:center;min-width:34px">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:${p.hr>0?t.color:'rgba(255,255,255,0.25)'}">${p.hr||0}</div>
+        ${(hr1||hr2)?`<div style="font-size:0.52rem;color:#666;letter-spacing:0.5px;white-space:nowrap">${hr1}×1 · ${hr2}×2</div>`:''}
       </div>
     </div>`;
   }).join('');
@@ -336,6 +340,7 @@ function renderTeam(k){
     <div>
       <div class="team-name" style="color:${t.color}">${lbl(k)}'S SQUAD</div>
       <div class="team-sub">${t.players.filter(p=>p.name).length} DRAFTED · PROJ ${getProjTotal(k)} HRs</div>
+      <div class="team-sub">${teamHr1} single-pt HR · ${teamHr2} double-pt HR</div>
     </div>
     <div><div class="team-total-label">TOTAL PTS</div><div class="team-total-num" style="color:${t.color}">${tot}</div></div>
   </div>
@@ -517,14 +522,15 @@ async function syncAllHRs(isAutoLoad=false){
       const res = await fetch(url);
       const data = await res.json();
       const splits = data?.stats?.[0]?.splits || [];
-      let hr = 0, pts = 0;
+      let hr1 = 0, hr2 = 0;
       splits.forEach(g => {
         const gameHR = g.stat?.homeRuns || 0;
-        hr += gameHR;
-        pts += gameHR * (g.date >= DOUBLE_POINTS_START ? 2 : 1);
+        if(g.date >= DOUBLE_POINTS_START) hr2 += gameHR; else hr1 += gameHR;
       });
-      player.hr = hr;
-      player.pts = pts;
+      player.hr1 = hr1;
+      player.hr2 = hr2;
+      player.hr = hr1 + hr2;
+      player.pts = hr1 + hr2*2;
       updated++;
     } catch(e){ /* silently skip */ }
   }));
